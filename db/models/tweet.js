@@ -1,10 +1,20 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
   const Tweet = sequelize.define('Tweet', {
-    message: DataTypes.STRING
+    message: {
+      type: DataTypes.STRING(280),
+      allowNull: false,
+    },
+    userId:{
+      allowNull: false,
+      type: DataTypes.INTEGER
+    }
   }, {});
   Tweet.associate = function(models) {
-    // associations can be defined here
+    Tweet.belongsTo(models.User, {
+      as: "user",
+      foreignKey: "userId",
+    });
   };
   return Tweet;
 };

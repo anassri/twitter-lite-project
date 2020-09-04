@@ -1,12 +1,14 @@
 const express = require('express');
-const {check, validationResult}= require('express-validator');
-const db=require("../db/models");
-
-const {Tweet}=db;
+const {check, validationResult} = require('express-validator');
+const db = require("../db/models");
+const {asyncHandler, handleValidationErrors} = require("../utils");
+const {requireAuth} = require("../auth");
+const user = require('../db/models/user');
+const {Tweet} = db;
 
 const router = express.Router();
 
-const asyncHandler = (handler) => (req, res, next) => handler(req, res, next).catch(next);
+router.use(requireAuth);
 
 const tweetValidator = [
     check('message')
@@ -21,22 +23,13 @@ const tweetNotFoundError = (id) =>{
     err.status = 404;
     return err;
 };
-const handleValidationErrors = (req,res,next)=>{
-    const validationErrors = validationResult(req);
-
-    if(!validationErrors.isEmpty()){
-        const errors = validationErrors.array().map((err)=>err.msg);
-        const err = Error("Bad request.");
-        err.errors = errors;
-        err.status = 400;
-        err.title = "Bad request.";
-        return next(err);
-    }
-    next();
-}
 
 router.get("/", asyncHandler( async (req, res) => {
-    const tweets = await Tweet.findAll();
+    const tweets = await Tweet.findAll({
+        include: [{model: user, as: "user", attributes: ["username"]}],
+        order: [["createdAt", "DESC"]],
+        attributes: ["message"],
+    });
     res.json({ tweets });
 }));
 
@@ -53,7 +46,7 @@ router.get("/:id(\\d+)", asyncHandler( async (req, res, next) => {
 
 router.post("/", tweetValidator, handleValidationErrors, asyncHandler( async (req, res)=>{
     const {message} = req.body;
-    const tweet = await Tweet.create({message});
+    const tweet = await Tweet.create({message, userId: req.user.id});
     res.status(201).json({message});
 }));
 
